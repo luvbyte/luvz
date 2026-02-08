@@ -3,6 +3,9 @@ import sys
 import types
 import argparse
 
+import asyncio
+import inspect
+
 from pathlib import Path
 from datetime import datetime
 from cmd2 import Cmd, Cmd2ArgumentParser, with_argparser
@@ -11,7 +14,7 @@ from rich.text import Text
 from rich.table import Table
 
 from luvz.modules.process import sh
-from .base import BANNER, RunnerUtils
+from .base import BANNER, RunnerBase
 from luvz.core.context import ZScript, ScriptCommand
 
 
@@ -53,13 +56,16 @@ class ZScriptRunner(Cmd):
     # init of Cmd
     super().__init__()
     # restoring argv
-    self.script = script
     sys.argv = original_argv
 
+    self.base = RunnerBase(script, clear=True)
     self._register_commands()
 
-    self.utils = RunnerUtils(self.script)
     self.script.events.emit("it:init")
+
+  @property
+  def script(self) -> ZScript:
+    return self.base.script
 
   # arg parser
   def _register_commands(self):
@@ -69,6 +75,7 @@ class ZScriptRunner(Cmd):
       @with_argparser(command.argparser)
       def do_func(inner_self, args, cmd=command):
         try:
+          # run_maybe_async(cmd.run, args)
           cmd.run(args)
         except Exception as e:
           inner_self.exception(e)
@@ -84,7 +91,7 @@ class ZScriptRunner(Cmd):
 
   @property
   def scr(self):
-    return self.utils.scr
+    return self.base.scr
 
   @property
   def prompt(self):
@@ -124,16 +131,16 @@ class ZScriptRunner(Cmd):
   @with_argparser(make_options_parser())
   def do_options(self, args):
     if args.subcommand == "required":
-      self.utils.print_options(True)
+      self.base.print_options(True)
     else:
-      self.utils.print_options(False)
+      self.base.print_options(False)
 
   @with_argparser(make_commands_parser())
   def do_commands(self, args):
     if args.subcommand == "all":
-      self.utils.print_commands_cmd2()
+      self.base.print_commands_cmd2()
     else:
-      self.utils._print_commands(False)
+      self.base._print_commands(False)
 
   #--- setting option
   def help_zset(self):
@@ -190,8 +197,8 @@ class ZScriptRunner(Cmd):
       return super().do_help(line)
     
     self.scr.print_panel("[red]Usage[/red]: command [ARGS] [-h]", padding=False)
-    self.utils.print_commands_cmd2()
-    self.utils.print_options()
+    self.base.print_commands_cmd2()
+    self.base.print_options()
 
   # ---- default
   def default(self, line):
@@ -201,17 +208,22 @@ class ZScriptRunner(Cmd):
     self.scr.print(f"[blue]luvz[/blue]: Unknown command: [red]{line.command}[/red]")
 
   # ---- starts from here
-  def run(self, clear: bool = True, intro: bool = True):
-    self.script.events.emit("run")
-    if clear:
-      self.scr.clear()
+  def _run(self):
+    if self.script.intro: # TODO
+      self.base.print_intro()
 
-    if intro:
-      self.utils.print_intro()
-    
     self.cmdloop()
-    self.script.events.emit("run")
+
+  def run(self):
+    self.script.events.emit("it:run")
+    
+    self._run()
+
+    self.script.events.emit("it:end")
 
   # Exception handling
   def exception(self, text):
-    self.utils.exception(text)
+    self.base.exception(text)
+
+
+

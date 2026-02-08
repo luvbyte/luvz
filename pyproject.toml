@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "luvz"
-version = "0.0.1.dev0"
+version = "0.0.3"
 description = "Lazy script builder"
 authors = [{name="luvbyte", email="lovemelong@protonmail.com"}]
 license = {text = "MIT"}

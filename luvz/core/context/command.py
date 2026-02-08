@@ -1,6 +1,8 @@
 import cmd2
 import inspect
 
+from luvz.utils.runner import any_run
+
 class Arg:
   def __init__(self, *args, **kwargs):
     self.args = args
@@ -78,6 +80,9 @@ class ScriptCommand:
   def emit_func(self, *args, **kwargs):
     return self.func(*args, **kwargs) if callable(self.func) else self.func
   
+  def _run(self, func, *args, **kwargs):
+    any_run(func)
+
   # args will be cmd2 Namespace()
   def run(self, args):
     import inspect
@@ -114,7 +119,7 @@ class ScriptCommand:
             keywords[name] = arg_dict[name]
 
     # Call the function
-    return self.func(*positional, *varargs, **keywords, **extra_kwargs)
+    return any_run(self.func, *positional, *varargs, **keywords, **extra_kwargs)
 
   def run_cli(self, args):
     return self.run(self.argparser.parse_args(args))

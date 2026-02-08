@@ -1,8 +1,7 @@
 from luvz import ZScript, run_script, Arg
 
+
 script = ZScript()
-
-
 
 # These are global options
 # username = script.add_option("username", require=True)

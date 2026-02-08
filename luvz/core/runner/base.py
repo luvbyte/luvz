@@ -3,22 +3,7 @@ from luvz.core import __version__
 
 import atexit
 
-BANNER = r"""
-[blue]███████╗███████╗███████╗[/]
-╚══███╔╝╚══███╔╝╚══███╔╝
-[red]  ███╔╝   ███╔╝   ███╔╝ [/]
- ███╔╝   ███╔╝   ███╔╝  
-[yellow]███████╗███████╗███████╗[/]
-╚══════╝╚══════╝╚══════╝
-"""
-BANNER = r"""
-|   _    _   ___     _______
-|  | |  | | | \ \   / /__  /
-|  | |  | | | |\ \ / /  / / 
-|  | |__| |_| | \ V /  / /_ 
-|  |_____\___/   \_/  /____|
-                          
-"""
+
 BANNER = r"""
 [blue]██╗      ██╗   ██╗ ██╗   ██╗ ███████╗[/]
 ██║      ██║   ██║ ██║   ██║ ╚══███╔╝
@@ -28,17 +13,20 @@ BANNER = r"""
 ╚══════╝  ╚═════╝    ╚═══╝   ╚══════╝
 """
 
-class RunnerUtils:
-  def __init__(self, script):
+class RunnerBase:
+  def __init__(self, script, clear):
     self.script = script
     atexit.register(self.__on_exit)
     # emiting init
-    self.script.events.emit("init")
+    self.script.events.emit("start")
+
+    if clear if self.script.clear is None else self.script.clear:
+      self.scr.clear()
 
   @property
   def scr(self): # global scr for runners
     return self.script.scr
-  
+
   def print_header(self):
     self.scr.print_center(self.script.banner or BANNER)
     self.scr.print_center(f"luvz: [blue]luvbyte[/blue] | version: [red]{__version__}[/red]")
@@ -53,7 +41,7 @@ class RunnerUtils:
     # if banner found print it
     if self.script.banner:
       self.scr.print_center(self.script.banner)
-    # if its False then dont print any banner
+    # if its False then don't print any banner
     elif self.script.banner is not False:
       self.print_header()
 

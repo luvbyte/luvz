@@ -6,44 +6,18 @@ import inspect
 from uuid import uuid4
 from pathlib import Path
 
-from luvz.modules.process import sh
-from luvz.utils.path import ensure_dir
-from luvz.modules.console import AdvConsole
-from luvz.core.models.script import ScriptConfigModel
-
-from .task import ScriptTasks
 from .command import ScriptCommands, Arg
 
+from luvz.core.models.script import ScriptConfigModel
 
-# ---- script events 
+from luvz.modules.process import sh
+from luvz.modules.console import AdvConsole
 
-class ScriptEvent:
-  def __init__(self, name, func, *args, **kwargs):
-    self.name = name
-    self.func = func
-  
-  def emit(self, *args, **kwargs):
-    return self.func(*args, **kwargs)
+from luvz.utils.events import Events
+from luvz.utils.path import ensure_dir
 
-class ScriptEvents:
-  def __init__(self):
-    self._registers = {}
+from typing import Optional
 
-  def add(self, name: str, func, *args, **kwargs) -> ScriptEvent:
-    event = ScriptEvent(name, func, *args, **kwargs)
-    self._registers.setdefault(name, []).append(event)
-    
-    return event
-
-  def has(self, name: str):
-    return name in self._registers
-  
-  def get(self, name, default=None):
-    return self._registers.get(name, default)
-
-  def emit(self, name, *args, **kwargs):
-    for ev in self._registers.get(name, []):
-      ev.emit(*args, **kwargs)
 
 # ---- Config and ZOptions
 
@@ -145,11 +119,11 @@ class ScriptArgs:
 class ZScript:
   prompt = "| "
   banner = None
-  def __init__(self, name=None, version=None, author=None, desc=None, config={}):
+  def __init__(self, name=None, version=None, author=None, desc=None, intro=True, clear=None, banner=None, config={}):
     # script paths
     self.script_full_path = Path(sys.argv[0])
     self.script_path = self.script_full_path.parent
-    
+
     # with ext
     self.script_name = os.path.basename(sys.argv[0])
     # script meta
@@ -158,15 +132,18 @@ class ZScript:
     self.author = author
     self.version = version
 
+    self.intro = intro
+    self.banner = banner
+    self.clear = clear
+
     self.scr = AdvConsole()
     self.options = ScriptOptions()
     self.config = ScriptConfig(ScriptConfigModel(**config))
 
-    self.events = ScriptEvents()
+    # Script events
+    self.events = Events()
     self.commands = ScriptCommands()
-    self.tasks = ScriptTasks()
 
-    self.sh = sh
     # finally parsing args
     self.args = ScriptArgs()
 
@@ -174,16 +151,13 @@ class ZScript:
   def cwd(self):
     return os.getcwd()
 
-  def arg(self, *args, **kwargs):
-    return Arg(*args, **kwargs)
-
   def add_option(self, *args, **kwargs):
     return self.options.add(*args, **kwargs)
 
   def on(self, name, *args, **kwargs):
     def wrapper(func):
-      if name.startswith("luvz:"):
-        self.events.add(name[4:], func, *args, **kwargs)
+      if name.startswith("lz:"):
+        self.events.add(name[3:], func, *args, **kwargs)
       else:
         self.commands.add(name, func, *args, **kwargs)
     return wrapper
@@ -192,8 +166,4 @@ class ZScript:
     def wrapper(func):
       self.events.add(name, func, *args, **kwargs)
     return wrapper
-
-  def __call__(self, cmd):
-    if cmd.startswith("$"):
-      return self.sh(cmd[1:])
 
